@@ -128,7 +128,11 @@ p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroid
 # often data is stored in an external drive, need a pointer to this folder
 file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
 
-plot_name <- "OSBS_007"
+plot_name <- "OSBS_014"
+
+img_bands <- c(177,53,16)
+name_bands <- paste(img_bands[1],img_bands[2],img_bands[3],sep="-")
+
 
 # 1. identify path
 path <- find_flight_path(p_full,plot_name,2,11)
@@ -151,20 +155,32 @@ plot_extent <- create_extent_around_point(plot_coords,40)
 h5_extent <- create_extent(h5_file)
 
 # create new extent object that can be applied in the create_stack function
-extent_to_clip <- calculate_index_extent(clipExtent = point_extent,
+extent_to_clip <- calculate_index_extent(clipExtent = plot_extent,
                                          h5Extent = h5_extent)
 
 test <- create_stack(h5_file, 
-             bands=c(177,53,16),
+             bands=img_bands,
              epsg = 32617,
              subset=T,
              dims = extent_to_clip)
 
 plotRGB(test,stretch="lin")
 
-# write to file
-writeRaster(test,"output/test.tif","GTiff",
-            options="TFW=YES",overwrite=T)
+# need to save compressed image and add word file
+
+img_file_name <- paste(plot_name,name_bands,sep="_")
+
+# write tiff file
+# need to use this and not writeRaster because image need to be flattened to RGB image
+tiff(paste("output/",img_file_name,".tif",sep=""),width=80,height=80)
+plotRGB(test,stretch="lin")
+dev.off()
+
+# write header file
+# x res,0,0,yres,xmin,ymax
+h <- c(1.000000,0.000000,0.000000,-1.000000,plot_extent@xmin,plot_extent@ymax)
+write.table(h,paste("output/",img_file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
+
 
 ```
 
