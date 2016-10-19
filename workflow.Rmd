@@ -1,0 +1,67 @@
+---
+title: "Workfow to create image subsets for field mapping"
+author: "Sarah Graves"
+date: "October 19, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+The purpose of this workflow is to have an automated way to create image subsets surrounding NEON plots. The basic process is to read in a spatial points file of all plot locations, identify the correct flight path (either spatially or by reading an attribute in the point file), extract 3-band combinations from the HDF5 files, and save raster files to load onto the iPad.
+
+## Load spatial data and identify flight path
+
+This step identifies the path number for a specified plot ID.
+
+```{r Load-spatial-polygons}
+
+library(sp)
+library(rgdal)
+
+# read in shapefile
+p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
+
+# function to set plot and identify path
+find_flight_path <- function(spatial_file,plot_string,plot_column,path_column){
+  
+  # convert to dataframe
+  df <- spatial_file@data
+  
+  # finds the row in the df that matches the plot_string, pulls out the path id in the path_column
+  path <- df[which(df[,plot_column]==plot_string),path_column]
+  
+  return(path)
+}
+
+# test function
+# find_flight_path(p_full,"OSBS_014",2,11)
+# find_flight_path(p_full,c("OSBS_007","OSBS_014"),2,11)
+
+```
+
+The next step is to find the HDF5 file that corresponds to the identified flight path. Often the files are stored in a single folder for the year and site. Therefore, the function should search through the list of file and find the file with the flight path in the name
+
+```{r Identify-H5-file-path}
+
+# often data is stored in an external drive, need a pointer to this folder
+file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
+
+# simple regex statement to return the full file path that matches the uniqe part of the identified path
+h5_file <- list.files(file_folder,full.names=T)[grep(path,list.files(file_folder))]
+
+```
+
+Once the specific file has been identified more complex functions to extract information from the HDF5 files can be used.
+
+
+
+
+
