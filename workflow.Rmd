@@ -17,14 +17,24 @@ When you click the **Knit** button a document will be generated that includes bo
 
 The purpose of this workflow is to have an automated way to create image subsets surrounding NEON plots. The basic process is to read in a spatial points file of all plot locations, identify the correct flight path (either spatially or by reading an attribute in the point file), extract 3-band combinations from the HDF5 files, and save raster files to load onto the iPad.
 
+```{r load-packages}
+
+library(sp)
+library(rgdal)
+library(raster)
+library(neonAOP)
+library(rhdf5)
+
+```
+
+
 ## Load spatial data and identify flight path
 
 This step identifies the path number for a specified plot ID.
 
 ```{r Load-spatial-polygons}
 
-library(sp)
-library(rgdal)
+
 
 # read in shapefile
 p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
@@ -54,12 +64,109 @@ The next step is to find the HDF5 file that corresponds to the identified flight
 # often data is stored in an external drive, need a pointer to this folder
 file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
 
-# simple regex statement to return the full file path that matches the uniqe part of the identified path
-h5_file <- list.files(file_folder,full.names=T)[grep(path,list.files(file_folder))]
+# function to create file path name
+create_file_path <- function(file_folder,path){
+  
+  # simple regex statement to return the full file path that matches the uniqe part of the identified path
+  h5_file <- list.files(file_folder,full.names=T)[grep(path,list.files(file_folder))]
+
+  return(h5_file)
+}
+
 
 ```
 
 Once the specific file has been identified more complex functions to extract information from the HDF5 files can be used.
+
+```{r HDF5-extraction}
+
+# function to extract the x y coordinates of the plot
+# output depends on projection of spatial data, assume it's in UTM meters
+find_point_coordinates <- function(spatial_file,plot_string,plot_column){
+  
+  # convert to dataframe
+  df <- spatial_file@data
+  
+  # find row of plot_string
+  r <- which(df[,plot_column]==plot_string)
+  
+  plot_coords <- spatial_file@coords[r,]
+  
+  return(unname(plot_coords))
+}
+
+# test function
+# point_coordinates <- find_point_coordinates(p_full,"OSBS_007",2)
+# find_point_coordinates(p_full,c("OSBS_007","OSBS_014"),2)
+
+# function to create extent or bounding box around point location
+create_extent_around_point <- function(point_coordinates,buffer_size){
+  
+  xmin <- round(point_coordinates[1]-buffer_size)
+  xmax <- round(point_coordinates[1]+buffer_size)
+  
+  ymin <- round(point_coordinates[2]-buffer_size)
+  ymax <- round(point_coordinates[2]+buffer_size)
+  
+  # create extent object
+  point_extent <- extent(xmin,xmax,ymin,ymax)
+  
+  return(point_extent)
+}
+
+# test function - have only tested with 1 point
+# create_extent_around_point(point_coordinates,40)
+
+
+```
+
+```{r apply-functions}
+
+# read in shapefile
+p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
+
+# often data is stored in an external drive, need a pointer to this folder
+file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
+
+plot_name <- "OSBS_007"
+
+# 1. identify path
+path <- find_flight_path(p_full,plot_name,2,11)
+
+# 2. create path name
+h5_file <- create_file_path(file_folder,path)
+
+# 3. extract plot coordinates
+plot_coords <- find_point_coordinates(p_full,plot_name,2)
+
+# 4. create extent around point
+plot_extent <- create_extent_around_point(plot_coords,40)
+
+```
+
+
+```{r test-neonAOP-package-functions}
+
+# create extent object for H5 file
+h5_extent <- create_extent(h5_file)
+
+# create new extent object that can be applied in the create_stack function
+extent_to_clip <- calculate_index_extent(clipExtent = point_extent,
+                                         h5Extent = h5_extent)
+
+test <- create_stack(h5_file, 
+             bands=c(177,53,16),
+             epsg = 32617,
+             subset=T,
+             dims = extent_to_clip)
+
+plotRGB(test,stretch="lin")
+
+# write to file
+writeRaster(test,"output/test.tif","GTiff",
+            options="TFW=YES",overwrite=T)
+
+```
 
 
 
