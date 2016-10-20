@@ -6,14 +6,10 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 The purpose of this workflow is to have an automated way to create image subsets surrounding NEON plots. The basic process is to read in a spatial points file of all plot locations, identify the correct flight path (either spatially or by reading an attribute in the point file), extract 3-band combinations from the HDF5 files, and save raster files to load onto the iPad.
 
@@ -25,35 +21,19 @@ library(raster)
 library(neonAOP)
 library(rhdf5)
 
+# read in custom function
+source("scripts/functions.R")
+
 ```
 
 
 ## Load spatial data and identify flight path
 
-This step identifies the path number for a specified plot ID.
+This step identifies the path number for a specified plot ID. The fight path was manually added to the spatial polygon shapefile. This was done because often there are two flight paths that intersect a single NEON plot center. Manual assignment of a NEON plot to a flight path ensures that the best flight path is chosen. The primary considerations for which path is optimal are 1) lack of clouds or cloud shadows, and 2) position in the center of the flight path to reduce look angle effects.
 
 ```{r Load-spatial-polygons}
 
-
-
-# read in shapefile
-p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
-
-# function to set plot and identify path
-find_flight_path <- function(spatial_file,plot_string,plot_column,path_column){
-  
-  # convert to dataframe
-  df <- spatial_file@data
-  
-  # finds the row in the df that matches the plot_string, pulls out the path id in the path_column
-  path <- df[which(df[,plot_column]==plot_string),path_column]
-  
-  return(path)
-}
-
-# test function
-# find_flight_path(p_full,"OSBS_014",2,11)
-# find_flight_path(p_full,c("OSBS_007","OSBS_014"),2,11)
+find_flight_path
 
 ```
 
@@ -61,17 +41,7 @@ The next step is to find the HDF5 file that corresponds to the identified flight
 
 ```{r Identify-H5-file-path}
 
-# often data is stored in an external drive, need a pointer to this folder
-file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
-
-# function to create file path name
-create_file_path <- function(file_folder,path){
-  
-  # simple regex statement to return the full file path that matches the uniqe part of the identified path
-  h5_file <- list.files(file_folder,full.names=T)[grep(path,list.files(file_folder))]
-
-  return(h5_file)
-}
+create_file_path
 
 
 ```
@@ -80,45 +50,13 @@ Once the specific file has been identified more complex functions to extract inf
 
 ```{r HDF5-extraction}
 
-# function to extract the x y coordinates of the plot
-# output depends on projection of spatial data, assume it's in UTM meters
-find_point_coordinates <- function(spatial_file,plot_string,plot_column){
-  
-  # convert to dataframe
-  df <- spatial_file@data
-  
-  # find row of plot_string
-  r <- which(df[,plot_column]==plot_string)
-  
-  plot_coords <- spatial_file@coords[r,]
-  
-  return(unname(plot_coords))
-}
+find_point_coordinates
 
-# test function
-# point_coordinates <- find_point_coordinates(p_full,"OSBS_007",2)
-# find_point_coordinates(p_full,c("OSBS_007","OSBS_014"),2)
-
-# function to create extent or bounding box around point location
-create_extent_around_point <- function(point_coordinates,buffer_size){
-  
-  xmin <- round(point_coordinates[1]-buffer_size)
-  xmax <- round(point_coordinates[1]+buffer_size)
-  
-  ymin <- round(point_coordinates[2]-buffer_size)
-  ymax <- round(point_coordinates[2]+buffer_size)
-  
-  # create extent object
-  point_extent <- extent(xmin,xmax,ymin,ymax)
-  
-  return(point_extent)
-}
-
-# test function - have only tested with 1 point
-# create_extent_around_point(point_coordinates,40)
-
+create_extent_around_point
 
 ```
+
+These functions can be applied sequentially. The full workflow requires use of the neonAOP package by Leah Wasser.
 
 ```{r apply-functions}
 
@@ -128,10 +66,12 @@ p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroid
 # often data is stored in an external drive, need a pointer to this folder
 file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
 
-plot_name <- "OSBS_014"
+plot_name <- "OSBS_020"
 
 img_bands <- c(177,53,16)
 name_bands <- paste(img_bands[1],img_bands[2],img_bands[3],sep="-")
+
+img_file_name <- paste(plot_name,name_bands,sep="_")
 
 
 # 1. identify path
@@ -146,45 +86,25 @@ plot_coords <- find_point_coordinates(p_full,plot_name,2)
 # 4. create extent around point
 plot_extent <- create_extent_around_point(plot_coords,40)
 
-```
-
-
-```{r test-neonAOP-package-functions}
-
-# create extent object for H5 file
+# 5. create extent object for H5 file
 h5_extent <- create_extent(h5_file)
 
 # create new extent object that can be applied in the create_stack function
 extent_to_clip <- calculate_index_extent(clipExtent = plot_extent,
                                          h5Extent = h5_extent)
 
-test <- create_stack(h5_file, 
-             bands=img_bands,
+# 6. Create multi-band raster object
+rgbimage <- create_stack(h5_file, 
+             bands=c(177,53,16),
              epsg = 32617,
              subset=T,
              dims = extent_to_clip)
 
-plotRGB(test,stretch="lin")
+plotRGB(rgbimage,stretch="lin")
 
-# need to save compressed image and add word file
-
-img_file_name <- paste(plot_name,name_bands,sep="_")
-
-# write tiff file
-# need to use this and not writeRaster because image need to be flattened to RGB image
-tiff(paste("output/",img_file_name,".tif",sep=""),width=80,height=80)
-plotRGB(test,stretch="lin")
-dev.off()
-
-# write header file
-# x res,0,0,yres,xmin,ymax
-h <- c(1.000000,0.000000,0.000000,-1.000000,plot_extent@xmin,plot_extent@ymax)
-write.table(h,paste("output/",img_file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
-
+# 7. Save raster to file
+save_raster_image(rgbimage,file_name = img_file_name, flatten = T)
 
 ```
-
-
-
 
 
