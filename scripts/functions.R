@@ -68,7 +68,7 @@ create_extent_around_point <- function(point_coordinates,buffer_size){
 # create_extent_around_point(point_coordinates,40)
 
 #### SAVE IMAGE OBJECT TO FILE ####
-save_raster_image <- function(multi_band_raster,file_name,flatten=TRUE,num_pix=80){
+save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TRUE,num_pix=80){
   
   if(flatten == TRUE){
     
@@ -81,11 +81,11 @@ save_raster_image <- function(multi_band_raster,file_name,flatten=TRUE,num_pix=8
     # write header file
     # x res,0,0,yres,xmin,ymax
     h <- c(1.000000,0.000000,0.000000,-1.000000,plot_extent@xmin,plot_extent@ymax)
-    write.table(h,paste("../data/NEON_plot_spatial_data/mapping_images/",img_file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
+    write.table(h,paste(save_folder,img_file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
     
   } else{
     
-    writeRaster(multi_band_raster,paste("../data/NEON_plot_spatial_data/mapping_images/",img_file_name,".tif",sep=""),format="GTiff",overwrite=T,options="TFW=YES")
+    writeRaster(multi_band_raster,paste(save_folder,img_file_name,".tif",sep=""),format="GTiff",overwrite=T,options="TFW=YES")
     
   }
   

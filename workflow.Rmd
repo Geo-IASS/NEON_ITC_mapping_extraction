@@ -66,13 +66,17 @@ p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroid
 # often data is stored in an external drive, need a pointer to this folder
 file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
 
-plot_name <- "OSBS_020"
+# folder to save images
+# leave backslash on folder name
+save_folder <-"../data/NEON_plot_spatial_data/digitizing_images/"
 
-img_bands <- c(177,53,16)
+plot_name <- "OSBS_011"
+
+img_bands <- c(16,34,53,96,136,177)
+
 name_bands <- paste(img_bands[1],img_bands[2],img_bands[3],sep="-")
-
-img_file_name <- paste(plot_name,name_bands,sep="_")
-
+#img_file_name <- paste(plot_name,name_bands,sep="_")
+img_file_name <- paste(plot_name,"6bands",sep="_")
 
 # 1. identify path
 path <- find_flight_path(p_full,plot_name,2,11)
@@ -95,7 +99,7 @@ extent_to_clip <- calculate_index_extent(clipExtent = plot_extent,
 
 # 6. Create multi-band raster object
 rgbimage <- create_stack(h5_file, 
-             bands=c(177,53,16),
+             bands=img_bands,
              epsg = 32617,
              subset=T,
              dims = extent_to_clip)
@@ -103,7 +107,7 @@ rgbimage <- create_stack(h5_file,
 plotRGB(rgbimage,stretch="lin")
 
 # 7. Save raster to file
-save_raster_image(rgbimage,file_name = img_file_name, flatten = T)
+save_raster_image(rgbimage,save_folder,file_name = img_file_name, flatten = F)
 
 ```
 
