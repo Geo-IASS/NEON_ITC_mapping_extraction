@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Hyperspectral data
 
 The purpose of this workflow is to have an automated way to create image subsets surrounding NEON plots. The basic process is to read in a spatial points file of all plot locations, identify the correct flight path (either spatially or by reading an attribute in the point file), extract 3-band combinations from the HDF5 files, and save raster files to load onto the iPad.
 
@@ -111,4 +111,9 @@ save_raster_image(rgbimage,save_folder,file_name = img_file_name, flatten = F)
 
 ```
 
+# High res RGB camera data
 
+Next steps: Figure out format and tiling of camera and lidar data
+
+
+# Lidar data
