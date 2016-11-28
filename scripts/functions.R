@@ -74,18 +74,18 @@ save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TR
     
     # write tiff file
     # need to use this and not writeRaster because image need to be flattened to RGB image
-    tiff(paste("../data/NEON_plot_spatial_data/mapping_images/",img_file_name,".tif",sep=""),width=num_pix,height=num_pix)
+    tiff(paste(save_folder,file_name,".tif",sep=""),width=num_pix,height=num_pix)
     plotRGB(multi_band_raster,stretch="lin")
     dev.off()
     
     # write header file
     # x res,0,0,yres,xmin,ymax
     h <- c(1.000000,0.000000,0.000000,-1.000000,plot_extent@xmin,plot_extent@ymax)
-    write.table(h,paste(save_folder,img_file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
+    write.table(h,paste(save_folder,file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
     
   } else{
     
-    writeRaster(multi_band_raster,paste(save_folder,img_file_name,".tif",sep=""),format="GTiff",overwrite=T,options="TFW=YES")
+    writeRaster(multi_band_raster,paste(save_folder,file_name,".tif",sep=""),format="GTiff",overwrite=T,options="TFW=YES")
     
   }
   
