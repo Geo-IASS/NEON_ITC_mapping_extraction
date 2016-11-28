@@ -64,19 +64,29 @@ These functions can be applied sequentially. The full workflow requires use of t
 p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
 
 # often data is stored in an external drive, need a pointer to this folder
-file_folder <- "G:/NEON_AOP_downloads/OSBS_Reflectance"
+# file_folder <- "D:/NEON_AOP_downloads/OSBS_Reflectance"
+
+file_folder <- "F:/D03/OSBS/2014/OSBS_L1/OSBS_Spectrometer/Reflectance"
 
 # folder to save images
 # leave backslash on folder name
-save_folder <-"../data/NEON_plot_spatial_data/digitizing_images/"
+save_folder <-"../data/NEON_plot_spatial_data/mapping_images/spectral/"
 
-plot_name <- "OSBS_011"
 
-img_bands <- c(16,34,53,96,136,177)
+plot_name <- "OSBS_020"
+
+
+# organgish image
+img_bands <- c(177,53,16)
+
+# 
+#img_bands <- c(96,177,34)
+
+#img_bands <- c(16,34,53,96,136,177)
 
 name_bands <- paste(img_bands[1],img_bands[2],img_bands[3],sep="-")
-#img_file_name <- paste(plot_name,name_bands,sep="_")
-img_file_name <- paste(plot_name,"6bands",sep="_")
+img_file_name <- paste(plot_name,name_bands,sep="_")
+#img_file_name <- paste(plot_name,"6bands",sep="_")
 
 # 1. identify path
 path <- find_flight_path(p_full,plot_name,2,11)
@@ -107,7 +117,10 @@ rgbimage <- create_stack(h5_file,
 plotRGB(rgbimage,stretch="lin")
 
 # 7. Save raster to file
-save_raster_image(rgbimage,save_folder,file_name = img_file_name, flatten = F)
+save_raster_image(multi_band_raster = rgbimage,
+                  save_folder = save_folder,
+                  file_name = img_file_name, 
+                  flatten = T)
 
 ```
 

@@ -68,26 +68,30 @@ create_extent_around_point <- function(point_coordinates,buffer_size){
 # create_extent_around_point(point_coordinates,40)
 
 #### SAVE IMAGE OBJECT TO FILE ####
-save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TRUE,num_pix=80){
+save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TRUE){
+  
+  # save tif raster
+  writeRaster(multi_band_raster,
+              filename=paste(save_folder,file_name,".tif",sep=""),
+              format="GTiff",overwrite=T,options="TFW=YES")
   
   if(flatten == TRUE){
     
+    # calculate the number of pixels wide or tall - assume image is square
+    num_pix <- multi_band_raster@extent@xmax - multi_band_raster@extent@xmin
+    
     # write tiff file
     # need to use this and not writeRaster because image need to be flattened to RGB image
-    tiff(paste(save_folder,file_name,".tif",sep=""),width=num_pix,height=num_pix)
+    tiff(paste(save_folder,file_name,"_flat",".tif",sep=""),width=num_pix,height=num_pix)
     plotRGB(multi_band_raster,stretch="lin")
     dev.off()
     
-    # write header file
-    # x res,0,0,yres,xmin,ymax
-    h <- c(1.000000,0.000000,0.000000,-1.000000,plot_extent@xmin,plot_extent@ymax)
-    write.table(h,paste(save_folder,file_name,".tfw",sep=""),sep=",",row.names = F,col.names = F)
     
-  } else{
+    # copy header file
+    file.copy(from=paste(save_folder,file_name,".tfw",sep=""),
+              to=paste(save_folder,file_name,"_flat",".tfw",sep=""))
     
-    writeRaster(multi_band_raster,paste(save_folder,file_name,".tif",sep=""),format="GTiff",overwrite=T,options="TFW=YES")
-    
-  }
+}
   
   
 }
