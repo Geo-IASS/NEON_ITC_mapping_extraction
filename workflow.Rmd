@@ -27,7 +27,7 @@ source("scripts/functions.R")
 ```
 
 
-## Load spatial data and identify flight path
+## Function overview
 
 This step identifies the path number for a specified plot ID. The fight path was manually added to the spatial polygon shapefile. This was done because often there are two flight paths that intersect a single NEON plot center. Manual assignment of a NEON plot to a flight path ensures that the best flight path is chosen. The primary considerations for which path is optimal are 1) lack of clouds or cloud shadows, and 2) position in the center of the flight path to reduce look angle effects.
 
@@ -56,6 +56,8 @@ create_extent_around_point
 
 ```
 
+## Create hyperspectral clips
+
 These functions can be applied sequentially. The full workflow requires use of the neonAOP package by Leah Wasser.
 
 ```{r apply-functions}
@@ -73,7 +75,7 @@ file_folder <- "F:/D03/OSBS/2014/OSBS_L1/OSBS_Spectrometer/Reflectance"
 save_folder <-"../data/NEON_plot_spatial_data/mapping_images/spectral/"
 
 
-plot_name <- "OSBS_020"
+plot_name <- "OSBS_004"
 
 
 # organgish image
@@ -126,7 +128,43 @@ save_raster_image(multi_band_raster = rgbimage,
 
 # High res RGB camera data
 
-Next steps: Figure out format and tiling of camera and lidar data
+## Function overview
+
+
+The camera and lidar images are tiled on thousand meter tiles. The file names represent meters in the x and y direction.
+To find which plot corresponds to which file, look up the x and y meters and round to the nearest thousands.
+
+For x, it is XXX,000
+For y is it YYYY,000
+
+```{r rgb-clip-fuction}
+
+create_RGB_clip
+
+```
+
+
+## Create RGB clip
+
+```{r create-rgb-image}
+
+save_folder <- "../data/NEON_plot_spatial_data/mapping_images/high_res/"
+img_name <- paste("RGB",plot_name,sep="_")
+source_folder <- "F:/D03/OSBS/2014/OSBS_L3/OSBS_Camera/"
+
+rgb_clip <- create_RGB_clip(plot_coords = plot_coords,
+                            source_folder = source_folder)
+
+plotRGB(rgb_clip)
+
+# use custom function to save the image
+save_raster_image(rgb_clip,
+                  save_folder = save_folder,
+                  file_name = img_name,
+                  flatten = T,
+                  img_res = 0.25)
+
+```
 
 
 # Lidar data
