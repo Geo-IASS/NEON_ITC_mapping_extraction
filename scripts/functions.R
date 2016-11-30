@@ -68,25 +68,35 @@ create_extent_around_point <- function(point_coordinates,buffer_size){
 # create_extent_around_point(point_coordinates,40)
 
 #### SAVE IMAGE OBJECT TO FILE ####
-save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TRUE,img_res=1){
+save_raster_image <- function(raster_object,image_type=c("spectra","camera","lidar"),save_folder,file_name,flatten=TRUE,img_res=1){
   
   # save tif raster
-  writeRaster(multi_band_raster,
+  writeRaster(raster_object,
               filename=paste(save_folder,file_name,".tif",sep=""),
               format="GTiff",overwrite=T,options="TFW=YES")
   
+  # if image for ipads is wanted
   if(flatten == TRUE){
     
     # calculate the number of pixels wide or tall - assume image is square
-    num_pix <- (multi_band_raster@extent@xmax - multi_band_raster@extent@xmin)/img_res
+    num_pix <- (raster_object@extent@xmax - raster_object@extent@xmin)/img_res
     
+    # check if it's a lidar image, requires different plotting because its a single band
+    if(image_type=="lidar"){
+      
+      # work around to use plotRGB function
+      # create a raster stack by duplicating single bands
+      raster_object <- stack(raster_object,raster_object,raster_object)
+
+    } else {
+
+    }
     
     # write tiff file
     # need to use this and not writeRaster because image need to be flattened to RGB image
     tiff(paste(save_folder,file_name,"_flat",".tif",sep=""),width=num_pix,height=num_pix)
-    plotRGB(multi_band_raster,stretch="lin")
+    plotRGB(raster_object,stretch="lin")
     dev.off()
-    
     
     # copy header file
     file.copy(from=paste(save_folder,file_name,".tfw",sep=""),
@@ -100,7 +110,8 @@ save_raster_image <- function(multi_band_raster,save_folder,file_name,flatten=TR
 create_RGB_clip <- function(plot_coords,source_folder){
   
   # use function in plyr package
-  plot_coords_round <- round_any(plot_coords,1000)
+  # cannot round to nearest thousand, need to get the lowest thousand so use floor option
+  plot_coords_round <- round_any(plot_coords,1000,f=floor)
   
   # use these values to find file to import
   f <- list.files(source_folder,
@@ -116,3 +127,24 @@ create_RGB_clip <- function(plot_coords,source_folder){
   
 }
 
+
+#### CREATE CLIPPED IMAGE OF LIDAR CHM, DEM, OR DSM IMAGES FOR PLOT ####
+create_lidar_clip <- function(plot_coords,source_folder,image_type=c("CHM","DSM","DTM","Slope","Aspect")){
+  
+  # use function in plyr package
+  # cannot round to nearest thousand, need to get the lowest thousand so use floor option
+  plot_coords_round <- round_any(plot_coords,1000,f=floor)
+  
+  # use these values to find file to import
+  f <- list.files(source_folder,
+                  pattern = paste0("*",plot_coords_round[1],"_",plot_coords_round[2],"_",image_type,".tif$"),
+                  full.names = T)
+  
+  # load raster
+  r <- raster(f)
+  
+  r_clip <- crop(r,plot_extent)
+  
+  return(r_clip)
+  
+}

@@ -20,6 +20,7 @@ library(rgdal)
 library(raster)
 library(neonAOP)
 library(rhdf5)
+library(plyr)
 
 # read in custom function
 source("scripts/functions.R")
@@ -56,14 +57,37 @@ create_extent_around_point
 
 ```
 
+## Plot parameters
+
+These steps create objects that are used in all the functions below and are not specific to an image type.
+
+```{r specify-plot}
+
+# read in shapefile
+p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",
+                  verbose = F,
+                  stringsAsFactors=F)
+
+
+plot_name <- "OSBS_008"
+
+
+# 3. extract plot coordinates
+plot_coords <- find_point_coordinates(p_full,plot_name,2)
+
+# 4. create extent around point
+plot_extent <- create_extent_around_point(plot_coords,40)
+
+
+```
+
+
 ## Create hyperspectral clips
 
 These functions can be applied sequentially. The full workflow requires use of the neonAOP package by Leah Wasser.
 
-```{r apply-functions}
 
-# read in shapefile
-p_full <- readOGR("../data/NEON_plot_spatial_data","OSBS_diversity_plot_centroids",verbose = F)
+```{r apply-functions}
 
 # often data is stored in an external drive, need a pointer to this folder
 # file_folder <- "D:/NEON_AOP_downloads/OSBS_Reflectance"
@@ -73,9 +97,6 @@ file_folder <- "F:/D03/OSBS/2014/OSBS_L1/OSBS_Spectrometer/Reflectance"
 # folder to save images
 # leave backslash on folder name
 save_folder <-"../data/NEON_plot_spatial_data/mapping_images/spectral/"
-
-
-plot_name <- "OSBS_004"
 
 
 # organgish image
@@ -91,16 +112,11 @@ img_file_name <- paste(plot_name,name_bands,sep="_")
 #img_file_name <- paste(plot_name,"6bands",sep="_")
 
 # 1. identify path
-path <- find_flight_path(p_full,plot_name,2,11)
+path <- find_flight_path(p_full,plot_name,plot_column=2,
+                         path_column=11)
 
 # 2. create path name
 h5_file <- create_file_path(file_folder,path)
-
-# 3. extract plot coordinates
-plot_coords <- find_point_coordinates(p_full,plot_name,2)
-
-# 4. create extent around point
-plot_extent <- create_extent_around_point(plot_coords,40)
 
 # 5. create extent object for H5 file
 h5_extent <- create_extent(h5_file)
@@ -119,7 +135,8 @@ rgbimage <- create_stack(h5_file,
 plotRGB(rgbimage,stretch="lin")
 
 # 7. Save raster to file
-save_raster_image(multi_band_raster = rgbimage,
+save_raster_image(raster_object = rgbimage,
+                  image_type = "spectral",
                   save_folder = save_folder,
                   file_name = img_file_name, 
                   flatten = T)
@@ -130,18 +147,11 @@ save_raster_image(multi_band_raster = rgbimage,
 
 ## Function overview
 
-
 The camera and lidar images are tiled on thousand meter tiles. The file names represent meters in the x and y direction.
 To find which plot corresponds to which file, look up the x and y meters and round to the nearest thousands.
 
 For x, it is XXX,000
 For y is it YYYY,000
-
-```{r rgb-clip-fuction}
-
-create_RGB_clip
-
-```
 
 
 ## Create RGB clip
@@ -159,6 +169,7 @@ plotRGB(rgb_clip)
 
 # use custom function to save the image
 save_raster_image(rgb_clip,
+                  image_type="camera",
                   save_folder = save_folder,
                   file_name = img_name,
                   flatten = T,
@@ -168,3 +179,32 @@ save_raster_image(rgb_clip,
 
 
 # Lidar data
+
+The lidar-derived models of ground and surface elevation, and canopy height are available as raster files in the same tile system as the RGB images. The process is similar to loading RGB data and creating a subset, but only for a single band raster.
+
+**NEXT** modify function to plot single band flattened image
+
+```{r create-lidar-image}
+
+save_folder <- "../data/NEON_plot_spatial_data/mapping_images/chm/"
+img_name <- paste("CHM",plot_name,sep="_")
+source_folder <- "F:/D03/OSBS/2014/OSBS_L3/OSBS_Lidar/CHM/"
+
+chm_clip <- create_lidar_clip(plot_coords = plot_coords,
+                            source_folder = source_folder,
+                            image_type = "CHM")
+
+plot(chm_clip)
+
+# use custom function to save the image
+save_raster_image(chm_clip,
+                  image_type = "lidar",
+                  save_folder = save_folder,
+                  file_name = img_name,
+                  flatten = T,
+                  img_res = 1)
+
+```
+
+
+
